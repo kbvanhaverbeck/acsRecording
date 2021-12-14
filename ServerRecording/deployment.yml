@@ -1,0 +1,46 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: recording-deployment
+  labels:
+    app: recording-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: recording-pod
+  template:
+    metadata:
+      labels:
+        app: recording-pod
+    spec:
+      containers:
+        - name: recording-app-container
+          image: crvip20.azurecr.io/recordingapi:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /text?text=test
+              port: 8080
+            periodSeconds: 600
+            timeoutSeconds: 30
+
+---
+kind: Service
+apiVersion: v1
+metadata:
+  labels:
+    app: recording-service
+  name: recording-service
+spec:
+  ports:
+    - name: web
+      port: 80
+      protocol: TCP
+      targetPort: 8080
+  selector:
+    app: recording-pod
+  sessionAffinity: None
+  type: ClusterIP

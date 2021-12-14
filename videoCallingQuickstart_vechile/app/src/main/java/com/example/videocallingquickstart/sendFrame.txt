@@ -1,0 +1,450 @@
+public class virtualCamera {
+
+    static int count = 0;
+    static int count2 = 0;
+
+    public static Socket socket = null;
+    Context context;
+    MediaFrameSender[] m_mediaFrameSender = new MediaFrameSender[1];
+    ;
+
+//    public void virtualCamera(Context context) {
+//        this.context = context;
+//    }
+
+    public OutboundVirtualVideoDeviceOptions createOutboundVirtualVideoDeviceOptions() throws Exception {
+
+        OutboundVirtualVideoDevice m_outboundVirtualVideoDevice;
+        OutboundVirtualVideoDeviceOptions m_options;
+
+        final VirtualDeviceIdentification[] deviceId = {new VirtualDeviceIdentification()};
+        deviceId[0].setId("QuickStartVirtualVideoDevice");
+        deviceId[0].setName("My First Virtual Video Device");
+
+        ArrayList<VideoFormat> videoFormats = new ArrayList<VideoFormat>();
+
+        VideoFormat format = new VideoFormat();
+        format.setWidth(1280); //needs to match the
+        format.setHeight(720);
+        format.setPixelFormat(PixelFormat.NV12);
+
+        format.setMediaFrameKind(MediaFrameKind.VIDEO_SOFTWARE); //stick with this until we know our final hardware
+        format.setFramesPerSecond(30);
+        format.setStride1(1280);
+        format.setStride2(1280 * (2 / 3));
+        videoFormats.add(format);
+
+        m_options = new OutboundVirtualVideoDeviceOptions();
+        Log.i("mOptions: ", m_options.toString() + "videoFormat " + m_options.getVideoFormats().toString());
+        m_options.setDeviceIdentification(deviceId[0]);
+
+        VideoFormat[] videoFormats1 = new VideoFormat[]{format};
+        Log.i("DEBUG: ", String.valueOf(videoFormats1.length));
+
+        // m_options.setVideoFormats(videoFormats1);
+        List<VideoFormat> fetchFormats = m_options.getVideoFormats();
+        Log.i("DEBUG: ", String.valueOf(fetchFormats.size()));
+        m_mediaFrameSender = new MediaFrameSender[1];
+
+        m_options.addOnFlowChangedListener(virtualDeviceFlowControlArgs -> {
+
+            if (virtualDeviceFlowControlArgs.getMediaFrameSender().getRunningState() == VirtualDeviceRunningState.STARTED) {
+                m_mediaFrameSender[0] = virtualDeviceFlowControlArgs.getMediaFrameSender();
+            } else {
+                m_mediaFrameSender[0] = null;
+            }
+        });
+
+        //  m_outboundVirtualVideoDevice = m_deviceManager.createOutboundVirtualVideoDevice(m_options).get();
+        return m_options;
+    }
+
+    public void onStartCommand(Intent intent, int flags, int startId) throws IOException {
+        Log.d("DEBUG", "camera service is running..");
+
+        DataInputStream in = null;
+
+        Timer timer = new Timer();
+        //timer.schedule(new TimerTask() {
+
+        try {
+            //if (socket != null) {
+            while (count < 10) {
+                // takes input from the client socket
+                in = new DataInputStream(socket.getInputStream());
+
+                // Receiving data from client
+                if (in.available() > 0) {
+                    byte[] lengthByte = new byte[4];
+                    in.read(lengthByte, 0, 4);
+
+                    int length = convertByteArrayToInt(lengthByte);
+
+                    byte[] buffer = new byte[length];
+                    in.readFully(buffer, 0, length);
+
+                    System.out.println("Received bytes from clients: " + buffer.length);
+                }
+                count++;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        // }, 15000, 15000);
+
+
+        //return super.onStartCommand(intent, flags, startId);
+        //return null;
+    }
+
+    String[] arrName = new String[]{"CameraProto1", "CameraProto2", "CameraProto3", "CameraProto4", "CameraProto5"};
+    int writeIndex = 0;
+
+    private void writeToSdFile(byte[] bytes) {
+        File root = Environment.getExternalStorageDirectory();
+        File dir = new File(root.getAbsolutePath() + "/sdv");
+
+        File file = new File(dir, arrName[writeIndex]);
+
+        try {
+            FileOutputStream stream = new FileOutputStream(file);
+            stream.write(bytes);
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        writeIndex++;
+        if (writeIndex > 4) {
+            writeIndex = 0;
+        }
+
+        //MainActivity.busManager.publish("camera.exterior.svcfrontcenter.image", file.getAbsolutePath().getBytes());
+
+    }
+
+
+    public int convertByteArrayToInt(byte[] data) {
+        if (data == null || data.length != 4) return 0x0;
+        return (int) (
+                (0xff & data[0]) << 24 |
+                        (0xff & data[1]) << 16 |
+                        (0xff & data[2]) << 8 |
+                        (0xff & data[3]) << 0
+        );
+    }
+
+
+    public char[] getCameraData(int size) {
+        InputStream stream = openYuvFile();
+
+        BufferedReader reader = new BufferedReader(
+                new InputStreamReader(stream));
+        // do reading, usually loop until end of file reading
+        char[] charArray
+                = new char[size];
+        try {
+            int videoSize = stream.available();
+            System.out.println("reader skip=" + reader.skip(count * size));
+            System.out.println("videosize=" + videoSize);
+            if ((count * size) < videoSize) {
+                int offset = 0;
+                //videosize = 22809599
+                //size= 152064
+                while (offset < size) {
+                    int charsRead = reader.read(charArray, offset, size - offset);
+                    System.out.println("charsreed=" + charsRead);
+                    if (charsRead <= 0) {
+                        throw new IOException("Stream terminated early");
+                    }
+                    offset += charsRead;
+                }
+            } else {
+                count = 0;
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            if (reader != null) {
+                try {
+                    reader.close();
+                } catch (IOException e) {
+                    //log the exception
+                }
+            }
+
+            return charArray;
+
+        }
+    }
+
+
+    public InputStream openYuvFile() {
+        InputStream stream = null;
+        try {
+            // stream = getApplicationContext().getResources().openRawResource
+            //         (getApplicationContext().getResources().getIdentifier("bus_cif",
+            //                 "raw", getApplicationContext().getPackageName()));
+            System.out.println("stream-> " + stream);
+            System.out.println("stream len-> " + stream.read());
+        } catch (Exception e) {
+            //log the exception
+        }
+        return stream;
+    }
+
+    public void ensureLocalVideoStreamWithVirtualCamera() {
+        Log.d("DEBUG", "VideoDeviceInfo ${deviceManager!!.getCameras().toString()}");
+        CallClient callClient = new CallClient();
+        try {
+            DeviceManager deviceManager = callClient.getDeviceManager(context).get();
+            //  for(int i=0;i< deviceManager.getCameras().size())
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        }
+       /* for (videoDeviceInfo in deviceManager!!.getCameras()) {
+            // val deviceId = videoDeviceInfo.id
+            // for testing hard code device id
+            val deviceId = "QuickStartVirtualVideoDevice"
+            Log.d("DEBUG", "Device ID: $deviceId")
+            if (deviceId.equals("QuickStartVirtualVideoDevice", ignoreCase = true)) {
+                m_virtualVideoStream = LocalVideoStream(videoDeviceInfo, applicationContext)
+            }
+        }*/
+
+
+    }
+}
+
+
+public class sendFrame {
+
+    private fun answerIncomingCall() {
+        Log.d("DEBUG", "ANSWER INCOMING CALL")
+        val context = this.applicationContext
+        if (incomingCall == null) {
+            return
+        }
+        val acceptCallOptions = AcceptCallOptions()
+
+        val cameras = deviceManager!!.cameras
+        if (!cameras.isEmpty()) {
+            val camera = chooseCamera(cameras)
+            Log.d("DEBUG", "SelectingOutboundVirtualDevice - i think i can ignore this since ensureLocalVideoStreamWithVirtualCamera does it...")
+            for (i in 0..1) {
+                val videoDeviceInfo: VideoDeviceInfo = cameras.get(0)
+                println("Device-Type is here vehicle" + " " + videoDeviceInfo.deviceType)
+            }
+            //selectOutboundVirtualVideoDevice()
+
+
+            //start running the RTSP feed through FFMEG -> SendFrames()
+            //Need to: consume and produce a problem...
+            //must be consuming the frames even when the sdk is saying not to
+            //will run into overbuffer somewhere
+
+            val videoStreams = arrayOfNulls<LocalVideoStream>(1)
+
+
+                val externalCameras = outboundVirtualVideoDevice
+                Log.d("DEBUG", "EXTERNAL CAMERA $externalCameras")
+
+                Log.d("DEBUG", "Virtual Camera: ${m_virtualVideoStream.toString()}")
+
+                //3-Nov
+                sendFrame()
+                //selects virtual camera
+                ensureLocalVideoStreamWithVirtualCamera()
+
+                videoStreams[0] = m_virtualVideoStream
+                val videoOptions = VideoOptions(videoStreams)
+                acceptCallOptions.videoOptions = videoOptions
+                //start Sending CONVERTED Frames ?
+
+                showPreview(m_virtualVideoStream!!)
+
+        }
+        try {
+            call = incomingCall!!.accept(context, acceptCallOptions).get()
+            //start Sending CONVERTED Frames ?
+            //selectOutboundVirtualVideoDevice()
+
+            call!!.mute(context).get()
+
+        } catch (e: InterruptedException) {
+            e.printStackTrace()
+        } catch (e: ExecutionException) {
+            e.printStackTrace()
+        }
+        call!!.addOnRemoteParticipantsUpdatedListener { args: ParticipantsUpdatedEvent -> handleRemoteParticipantsUpdate(args) }
+        call!!.addOnStateChangedListener { args: PropertyChangedEvent -> handleCallOnStateChanged(args) }
+
+        call!!.addOnRemoteParticipantsUpdatedListener { args: ParticipantsUpdatedEvent ->
+                handleRemoteParticipantsUpdate(
+                        args
+                )
+        }
+        call!!.addOnStateChangedListener { args: PropertyChangedEvent ->
+                handleCallOnStateChanged(
+                        args
+                )
+        }
+        //        sendFrame()
+        //turn on Local Video
+        turnOnLocalVideo()
+
+
+
+        Log.d("DEBUG", "AnswerIncomingCall")
+        getParticipantInformation()
+    }
+
+    fun sendFrame() { //NEEDS TO BE COMPLETED
+        //ffmegMessage
+        //stick with
+
+        //3-Nov
+        Log.d("Debug - sendFrame", ffmPegMessage.toString());
+
+        //this is where i need to integrate in the RTSP straem
+        //ORIGINAL code from MS (example.tx)
+        m_frameGeneratorThread = Thread {
+            try {
+                var plane1: ByteBuffer? = null
+                var plane2: ByteBuffer? = null
+                if (outboundVirtualVideoDevice == null) {
+
+                    Log.d("Debug - sendFrameNull", ffmPegMessage.toString());
+                    val virtualCamera01 = virtualCamera()
+                    if (virtualCamera01 != null) {
+                        if (deviceManager == null) {
+                            val callClient = CallClient()
+                            deviceManager = callClient.getDeviceManager(this@MainActivity).get()
+                        } else {
+                            //  outboundVirtualVideoDevice=  createOutboundVirtualVideoDevice(deviceManager!!)
+                            val options = virtualCamera01.createOutboundVirtualVideoDeviceOptions()
+                            outboundVirtualVideoDevice =
+                                    deviceManager!!.createOutboundVirtualVideoDevice(options).get()
+                            Log.d(
+                                    "Debug - sendOutbound",
+                                    outboundVirtualVideoDevice.toString() + "State: " + outboundVirtualVideoDevice!!.getRunningState()
+                            );
+                            for (camera in deviceManager!!.cameras) {
+                                // val videoDeviceInfo : VideoDeviceInfo = cameras.get(0)
+
+                                println("Device-Type is here vehicle outBoundmethod" + " " + camera.deviceType)
+                            }
+                            //  ensureLocalVideoStreamWithVirtualCamera()
+                            Log.i("mediaFrameValues", m_mediaFrameSender.size.toString())
+                        }
+
+                    }
+                }
+                while (outboundVirtualVideoDevice != null) {
+                    //   Log.d("Debug - sendFrame01" , ffmPegMessage.toString())
+
+
+                    /*  if(mediaFrameSender == null) {
+                          mediaFrameSender = mediaFrameSender as SoftwareBasedVideoFrame
+                          if(mediaFrameSender ==null){
+                              Log.d("Debug - mediafRame" , "mediaFrameSender is still null")
+                          }
+                          Log.d("Debug - mediafRame" , "mediaFrameSender is null")
+
+                      }*/
+
+
+
+                    Log.d("DEBUG-OutboundCamera " ,"Device ID : "+ deviceManager!!.cameras.get(0).id + "Device Name: "+deviceManager!!.cameras.get(0).name)
+
+                    if (mediaFrameSender == null) {
+                        Log.d("Debug - mediafRame", "mediaFrameSender is still null")
+                        //  val sender = mediaFrameSender as SoftwareBasedVideoFrame
+                        ///Log.d("Debug - mediafRame" , sender.toString())
+                        mediaFrameSender = m_mediaFrameSender.get(0)
+                        Log.i("DEBUG", "MEDIAFRAME" + mediaFrameSender.toString())
+
+                    }
+                    while (mediaFrameSender != null) {
+                        Log.d("Debug - sendFrame032", ffmPegMessage.toString())
+                        if (mediaFrameSender!!.getMediaFrameKind() === MediaFrameKind.VIDEO_SOFTWARE) {
+                            val sender = mediaFrameSender as SoftwareBasedVideoFrame
+                            val videoFormat = sender.videoFormat
+
+                            // Gets the timestamp for when the video frame has been created.
+                            // This allows better synchronization with audio.
+                            val timeStamp = sender.timestamp
+
+                            // Adjusts frame dimensions to the video format that network conditions can manage.
+                            if (plane1 == null || videoFormat.stride1 * videoFormat.height !== plane1.capacity()) {
+                                plane1 =
+                                        ByteBuffer.allocateDirect(videoFormat.stride1 * videoFormat.height)
+                                plane1.order(ByteOrder.nativeOrder())
+                            }
+
+                            if (plane2 == null || videoFormat.stride2 * videoFormat.height !== plane2.capacity()) {
+                                plane2 =
+                                        ByteBuffer.allocateDirect(videoFormat.stride2 * videoFormat.height)
+                                plane2.order(ByteOrder.nativeOrder())
+                            }
+
+                            /*for (i in 0 until bandsCount) {
+                                Arrays.fill(
+                                    plane1!!.copy(ffmegMessage.plane1),
+                                    plane2!!.copy(ffmegMessage.plane2)
+                                )
+                            }*/
+
+
+                            // Sends video frame to the other participants in the call.
+                            val fr = sender.sendFrame(plane1, timeStamp).get()
+                            Log.d("frame", fr.toString())
+                            // Waits before generating the next video frame.
+                            // Video format defines how many frames per second app must generate.
+                            Thread.sleep((1000.0f / videoFormat.framesPerSecond).toLong())
+                        }
+                    }
+
+
+                    // Virtual camera hasn't been created yet.
+                    // Let's wait a little bit before checking again.
+                    // This is for demo only purpose.
+                    // Please use a better synchronization mechanism.
+                    Thread.sleep(32)
+                }
+            } catch (e: InterruptedException) {
+                e.printStackTrace()
+            } catch (e: ExecutionException) {
+                e.printStackTrace()
+            }
+        }
+        m_frameGeneratorThread!!.start()
+
+        val joinCallOptions = JoinCallOptions()
+
+        try {
+            Thread.sleep(2000)
+        } catch (e: InterruptedException) {
+            e.printStackTrace()
+        }
+
+        //ensureLocalVideoStreamWithVirtualCamera()
+        if (m_virtualVideoStream == null) {
+            ensureLocalVideoStreamWithVirtualCamera()
+        }
+        if (joinCallOptions != null) {
+            Log.d("DEBUG", "JoinCallOption is not null" + joinCallOptions.videoOptions)
+            joinCallOptions.setVideoOptions(VideoOptions(arrayOf(m_virtualVideoStream)))
+        }
+
+
+        /*joinCallOptions.setVideoOptions(new VideoOptions(new LocalVideoStream[]{
+            m_virtualVideoStream
+        }));*/
+    }
+}

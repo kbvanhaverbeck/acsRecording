@@ -1,0 +1,10 @@
+platform :ios, '13.0'
+use_frameworks!
+
+target 'iOSVideo' do
+	pod 'AzureCommunicationCalling', '~> 1.0.0'
+	pod 'CocoaMQTT'
+	pod 'NotificationBannerSwift', '~> 3.0.0'
+
+
+end

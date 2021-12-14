@@ -1,0 +1,44 @@
+PODS:
+  - AzureCommunicationCalling (1.0.0):
+    - AzureCommunicationCommon (= 1.0.0)
+  - AzureCommunicationCommon (1.0.0):
+    - AzureCore (= 1.0.0-beta.12)
+  - AzureCore (1.0.0-beta.12)
+  - CocoaAsyncSocket (7.6.5)
+  - CocoaMQTT (1.2.5):
+    - CocoaAsyncSocket (~> 7.6.3)
+  - MarqueeLabel (4.0.5)
+  - NotificationBannerSwift (3.0.6):
+    - MarqueeLabel (~> 4.0.5)
+    - SnapKit (~> 5.0.1)
+  - SnapKit (5.0.1)
+
+DEPENDENCIES:
+  - AzureCommunicationCalling (~> 1.0.0)
+  - CocoaMQTT
+  - NotificationBannerSwift (~> 3.0.0)
+
+SPEC REPOS:
+  trunk:
+    - AzureCommunicationCalling
+    - AzureCommunicationCommon
+    - AzureCore
+    - CocoaAsyncSocket
+    - CocoaMQTT
+    - MarqueeLabel
+    - NotificationBannerSwift
+    - SnapKit
+
+SPEC CHECKSUMS:
+  AzureCommunicationCalling: 606b3743fce81a776a2bd807b2d8c0c7a1b33fbc
+  AzureCommunicationCommon: 37d81f556d367c8a8e20581da1d8ffea5401cb86
+  AzureCore: 2e029168d18ade4f2e8cc59a96f6d8b26acad2b2
+  CocoaAsyncSocket: 065fd1e645c7abab64f7a6a2007a48038fdc6a99
+  CocoaMQTT: a61490ed3b328011c5d75169a77781983e2bb221
+  MarqueeLabel: 00cc0bcd087111dca575878b3531af980559707d
+  NotificationBannerSwift: 7021be2338f8f29cf424b0aca43da462bf9e2a1a
+  SnapKit: 97b92857e3df3a0c71833cce143274bf6ef8e5eb
+
+PODFILE CHECKSUM: 59323d826a5cb59aa35573fca1d08429c08f31b5
+
+COCOAPODS: 1.11.2
